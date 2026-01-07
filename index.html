@@ -1363,7 +1363,8 @@
           card.style.top = pos.top;
           card.style.left = pos.left;
           
-          // Adapter la taille des cartes selon la largeur de l'écran
+          // Adapter la taille des cartes proportionnellement à la largeur du terrain
+          const canvasWidth = canvas.offsetWidth;
           const screenWidth = window.innerWidth;
           let cardWidth, cardHeight;
           
@@ -1376,9 +1377,15 @@
             cardWidth = '160px';
             cardHeight = '94px';
           } else {
-            // Desktop
-            cardWidth = pos.width;
-            cardHeight = pos.height;
+            // Desktop - adapter selon la largeur réelle du terrain
+            // Ratio original: 400px pour un terrain de ~1200px = 33.3%
+            // On adapte proportionnellement
+            const widthRatio = 0.28; // 28% de la largeur du terrain
+            const calculatedWidth = canvasWidth * widthRatio;
+            cardWidth = Math.max(150, Math.min(400, calculatedWidth)) + 'px'; // Entre 150px et 400px
+            // Maintenir le ratio 400:235 (≈1.7:1)
+            const heightValue = parseFloat(cardWidth) * (235 / 400);
+            cardHeight = heightValue + 'px';
           }
           
           card.style.width = cardWidth;
