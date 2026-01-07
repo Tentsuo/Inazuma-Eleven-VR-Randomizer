@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Randomizer Inazuma Eleven Victory Road</title>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-light: #818cf8;
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --border: #334155;
+      --shadow: rgba(0, 0, 0, 0.3);
+      --shadow-lg: rgba(0, 0, 0, 0.5);
+      
+      /* Layout constants */
+      --container-max-width: 1800px;  /* Largeur maximale pour grands écrans */
+      --sidebar-width: 350px;          /* Largeur fixe de la sidebar */
+      --player-list-max-height: 1200px; /* Hauteur max avant scroll - permet de voir les 11 joueurs */
+    }
+
+    /* Mode clair */
+    :root.light-mode {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-light: #818cf8;
+      --bg: #f8fafc;
+      --bg-card: #e2e8f0;
+      --bg-hover: #cbd5e1;
+      --text: #0f172a;
+      --text-secondary: #475569;
+      --border: #cbd5e1;
+      --shadow: rgba(0, 0, 0, 0.1);
+      --shadow-lg: rgba(0, 0, 0, 0.15);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem;
+    }
+
+    .container {
+      transform: scale(0.7);
+      transform-origin: top center;
+      max-width: var(--container-max-width);
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+      font-size: 1.8rem;
+    }
+
+    .info-box {
+      background: rgba(99, 102, 241, 0.1);
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+      margin-bottom: 1rem;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr var(--sidebar-width);
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      background-image: url('Terrain.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      aspect-ratio: 1;
+      border: 3px solid var(--border);
+      border-radius: 8px;
+      background-color: var(--bg-card);
+      cursor: default;
+      user-select: none;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translate(-50%, calc(-50% + 20px));
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    .player-card {
+      position: absolute;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      cursor: grab;
+      touch-action: none;
+      transition: box-shadow 0.2s;
+      box-shadow: 0 2px 8px var(--shadow);
+      overflow: hidden;
+      animation: fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      opacity: 0;
+    }
+
+    .player-card:hover {
+      box-shadow: 0 4px 12px var(--shadow-lg);
+      border-color: var(--primary-light);
+    }
+
+    .player-card.dragging {
+      opacity: 0.8;
+      z-index: 1000;
+    }
+
+    .player-name {
+      position: absolute;
+      bottom: 0.5rem;
+      left: 0.5rem;
+      font-size: 1.56rem;
+      font-weight: 700;
+      color: white;
+      text-shadow: 
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        -1px 0 0 #000,
+        1px 0 0 #000,
+        0 -1px 0 #000,
+        0 1px 0 #000;
+      z-index: 20;
+      max-width: 60%;
+      line-height: 1.1;
+      word-break: break-word;
+    }
+
+    .player-element {
+      position: absolute;
+      top: 0.5rem;
+      left: 0.5rem;
+      width: 3.125rem;
+      height: 3.125rem;
+      z-index: 20;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    }
+
+    .player-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      border-radius: 6px;
+      z-index: 1;
+    }
+
+    .player-image-container {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 60%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    .player-image {
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.5rem;
+      object-fit: cover;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .panel {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .panel h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1.125rem;
+      color: var(--primary-light);
+    }
+
+    .player-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: var(--player-list-max-height);
+      overflow-y: auto;
+    }
+
+    .player-item {
+      padding: 1.125rem;
+      background: var(--bg);
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+      font-size: 1.275rem;
+    }
+
+    .player-item:hover {
+      background: var(--bg-hover);
+    }
+
+    button {
+      padding: 0.75rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.85rem;
+    }
+
+    .btn-draw {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 12px var(--shadow-lg);
+    }
+
+    .btn-draw:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px var(--shadow-lg);
+    }
+
+    .btn-draw:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .checkbox-container input[type="checkbox"] {
+      width: 27px;
+      height: 27px;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    .checkbox-container label {
+      cursor: pointer;
+      font-size: 1.35rem;
+      margin: 0;
+      color: var(--text);
+    }
+
+    .element-filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .element-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .element-checkbox input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    .element-checkbox label {
+      cursor: pointer;
+      font-size: 1rem;
+      margin: 0;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .element-checkbox img {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .draw-button-container {
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .filter-heading {
+      margin-bottom: 0.75rem;
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+    }
+
+    .message-box {
+      position: fixed;
+      top: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-card);
+      border: 2px solid var(--primary);
+      border-radius: 8px;
+      padding: 1rem 2rem;
+      box-shadow: 0 8px 24px var(--shadow-lg);
+      z-index: 2000;
+      animation: slideDown 0.3s ease-out;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .message-box.error {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .message-box.warning {
+      border-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.1);
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .player-card {
+        animation: none !important;
+        opacity: 1 !important;
+      }
+      .loading-spinner {
+        animation: none;
+        border-top-color: rgba(255, 255, 255, 0.3);
+      }
+    }
+
+    @media (max-width: 1200px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Sélecteur de langue personnalisé */
+    .language-selector {
+      position: relative;
+      display: inline-block;
+    }
+
+    .language-button {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      width: 3.5rem;
+      height: 3.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.8rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .language-button:hover {
+      background: var(--bg-hover);
+      border-color: var(--primary-light);
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px var(--shadow-lg);
+    }
+
+    .language-menu {
+      position: absolute;
+      top: calc(100% + 0.5rem);
+      right: 0;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem;
+      min-width: 150px;
+      box-shadow: 0 4px 16px var(--shadow-lg);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .language-selector:hover .language-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .language-option {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+
+    .language-option:hover {
+      background: var(--bg-hover);
+      transform: translateX(4px);
+    }
+
+    .language-option.active {
+      background: rgba(99, 102, 241, 0.2);
+      border-left: 3px solid var(--primary);
+    }
+
+    .theme-toggle {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      width: 3.5rem;
+      height: 3.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.8rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .theme-toggle:hover {
+      background: var(--bg-hover);
+      border-color: var(--primary-light);
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px var(--shadow-lg);
+    }
+
+    .theme-toggle.sun-icon {
+      animation: rotateSun 0.6s ease-in-out;
+    }
+
+    @keyframes rotateSun {
+      from {
+        transform: rotate(-180deg);
+      }
+      to {
+        transform: rotate(0deg);
+      }
+    }
+
+    .controls-wrapper {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h1 id="mainTitle">⚽ Randomizer Inazuma Eleven Victory Road</h1>
+      <div class="controls-wrapper">
+        <button class="theme-toggle" id="themeToggle" title="Basculer le thème" aria-label="Mode sombre/clair">
+          🌙
+        </button>
+        <div class="language-selector">
+          <div class="language-button" role="button" tabindex="0" aria-label="Sélecteur de langue" aria-haspopup="true" aria-expanded="false">
+            🌍
+          </div>
+          <div class="language-menu" role="menu">
+            <div class="language-option" data-lang="fr" role="menuitem" tabindex="0">
+              <span>🇫🇷</span>
+              <span>Français</span>
+            </div>
+            <div class="language-option" data-lang="en" role="menuitem" tabindex="0">
+              <span>🇬🇧</span>
+              <span>English</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box" id="infoBox">
+      <strong id="infoTitle"></strong><br>
+      <span id="infoText"></span>
+    </div>
+
+    <div class="draw-button-container">
+      <button id="drawBtn" class="btn-draw">Tirer 11 joueurs</button>
+    </div>
+
+    <div class="main-grid">
+      <div class="canvas-container" id="canvas" role="region" aria-label="Terrain de jeu avec les joueurs tirés"></div>
+
+      <div class="sidebar">
+        <div class="panel">
+          <h2 id="optionsTitle">⚙️ Options</h2>
+          <div class="checkbox-container">
+            <input type="checkbox" id="romajiToggle">
+            <label for="romajiToggle" id="romajiLabel">Noms Romaji</label>
+          </div>
+          
+          <h3 class="filter-heading" id="genderFilterTitle">Sexe :</h3>
+          <div class="element-filters" role="group" aria-label="Filtrage par sexe">
+            <div class="element-checkbox">
+              <input type="checkbox" id="genderMale" checked aria-label="Inclure les joueurs masculins">
+              <label for="genderMale" id="genderMaleLabel">Masculin</label>
+            </div>
+            <div class="element-checkbox">
+              <input type="checkbox" id="genderFemale" checked aria-label="Inclure les joueurs féminins">
+              <label for="genderFemale" id="genderFemaleLabel">Féminin</label>
+            </div>
+          </div>
+          
+          <h3 class="filter-heading" id="elementFilterTitle">Éléments :</h3>
+          <div class="element-filters" role="group" aria-label="Filtrage par élément">
+            <div class="element-checkbox">
+              <input type="checkbox" id="elementWind" checked aria-label="Inclure l'élément Vent">
+              <label for="elementWind">
+                <img src="Wind.webp" alt="Vent">
+                <span id="elementWindLabel">Vent</span>
+              </label>
+            </div>
+            <div class="element-checkbox">
+              <input type="checkbox" id="elementForest" checked aria-label="Inclure l'élément Forêt">
+              <label for="elementForest">
+                <img src="Forest.webp" alt="Forêt">
+                <span id="elementForestLabel">Forêt</span>
+              </label>
+            </div>
+            <div class="element-checkbox">
+              <input type="checkbox" id="elementFire" checked aria-label="Inclure l'élément Feu">
+              <label for="elementFire">
+                <img src="Fire.webp" alt="Feu">
+                <span id="elementFireLabel">Feu</span>
+              </label>
+            </div>
+            <div class="element-checkbox">
+              <input type="checkbox" id="elementMountain" checked aria-label="Inclure l'élément Montagne">
+              <label for="elementMountain">
+                <img src="Mountain.webp" alt="Montagne">
+                <span id="elementMountainLabel">Montagne</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 id="teamTitle">📋 Équipe tirée</h2>
+          <div class="player-list" id="playerList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // Système de traductions multi-langue
+      const TRANSLATIONS = {
+        fr: {
+          title: '⚽ Randomizer Inazuma Eleven Victory Road',
+          infoTitle: '⚽ Tirez aléatoirement votre équipe complète !',
+          infoText: 'Cliquez sur le bouton pour obtenir 11 joueurs aléatoires disposés sur le terrain.',
+          drawButton: 'Tirer 11 joueurs',
+          loading: 'Chargement...',
+          loadingAttempt: 'Chargement... ({attempt}/{total})',
+          optionsTitle: '⚙️ Options',
+          romajiLabel: 'Noms Romaji',
+          genderFilterTitle: 'Sexe :',
+          genderMale: 'Masculin',
+          genderFemale: 'Féminin',
+          elementFilterTitle: 'Éléments :',
+          teamTitle: '📋 Équipe tirée',
+          elements: {
+            Wind: 'Vent',
+            Forest: 'Forêt',
+            Fire: 'Feu',
+            Mountain: 'Montagne'
+          },
+          messages: {
+            noPlayers: 'Aucun joueur disponible.',
+            selectFilters: 'Veuillez sélectionner au moins un sexe ET un élément.',
+            noPlayersWithFilters: 'Aucun joueur disponible (Sexe: {genders}, Éléments: {elements}).',
+            httpError: 'Erreur HTTP {status}: {message}',
+            noCsvPlayers: 'Aucun joueur trouvé dans le CSV',
+            errorPrefix: 'Erreur: {message}',
+            reloadToRetry: 'Rechargez la page pour réessayer',
+            playersLoaded: '{count} joueurs chargés avec succès',
+            playersExcluded: '{count} joueur(s) exclu(s)',
+            cannotSaveFilters: 'Impossible de sauvegarder les filtres:',
+            cannotSaveRomaji: 'Impossible de sauvegarder la préférence romaji:',
+            positionsError: 'Erreur chargement positions:',
+            missingElementImage: "Image d'élément manquante: {element}.webp"
+          },
+          aria: {
+            languageSelector: 'Sélecteur de langue',
+            fieldArea: 'Terrain de jeu avec {count} joueur{plural} tiré{plural}',
+            genderFilter: 'Filtrage par sexe',
+            elementFilter: 'Filtrage par élément',
+            includeMale: 'Inclure les joueurs masculins',
+            includeFemale: 'Inclure les joueurs féminins',
+            includeElement: "Inclure l'élément {element}"
+          },
+          tooltips: {
+            selectFiltersRequired: 'Veuillez sélectionner au moins un sexe ET un élément'
+          }
+        },
+        en: {
+          title: '⚽ Inazuma Eleven Victory Road Randomizer',
+          infoTitle: '⚽ Randomly draw your complete team!',
+          infoText: 'Click the button to get 11 random players arranged on the field.',
+          drawButton: 'Draw 11 players',
+          loading: 'Loading...',
+          loadingAttempt: 'Loading... ({attempt}/{total})',
+          optionsTitle: '⚙️ Options',
+          romajiLabel: 'Romaji Names',
+          genderFilterTitle: 'Gender:',
+          genderMale: 'Male',
+          genderFemale: 'Female',
+          elementFilterTitle: 'Elements:',
+          teamTitle: '📋 Drawn Team',
+          elements: {
+            Wind: 'Wind',
+            Forest: 'Forest',
+            Fire: 'Fire',
+            Mountain: 'Mountain'
+          },
+          messages: {
+            noPlayers: 'No players available.',
+            selectFilters: 'Please select at least one gender AND one element.',
+            noPlayersWithFilters: 'No players available (Gender: {genders}, Elements: {elements}).',
+            httpError: 'HTTP Error {status}: {message}',
+            noCsvPlayers: 'No players found in CSV',
+            errorPrefix: 'Error: {message}',
+            reloadToRetry: 'Reload the page to retry',
+            playersLoaded: '{count} players loaded successfully',
+            playersExcluded: '{count} player(s) excluded',
+            cannotSaveFilters: 'Cannot save filters:',
+            cannotSaveRomaji: 'Cannot save romaji preference:',
+            positionsError: 'Error loading positions:',
+            missingElementImage: 'Missing element image: {element}.webp'
+          },
+          aria: {
+            languageSelector: 'Language selector',
+            fieldArea: 'Playing field with {count} drawn player{plural}',
+            genderFilter: 'Filter by gender',
+            elementFilter: 'Filter by element',
+            includeMale: 'Include male players',
+            includeFemale: 'Include female players',
+            includeElement: 'Include {element} element'
+          },
+          tooltips: {
+            selectFiltersRequired: 'Please select at least one gender AND one element'
+          }
+        }
+      };
+
+      // Langue actuelle
+      let currentLang = localStorage.getItem('language') || 'fr';
+      let currentTheme = localStorage.getItem('theme') || 'dark';
+
+      // Initialiser le thème au chargement
+      function initTheme() {
+        const html = document.documentElement;
+        if (currentTheme === 'light') {
+          html.classList.add('light-mode');
+          document.getElementById('themeToggle').textContent = '☀️';
+        } else {
+          html.classList.remove('light-mode');
+          document.getElementById('themeToggle').textContent = '🌙';
+        }
+      }
+
+      // Fonction pour basculer le thème
+      function toggleTheme() {
+        const html = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+        
+        if (currentTheme === 'dark') {
+          currentTheme = 'light';
+          html.classList.add('light-mode');
+          themeToggle.textContent = '☀️';
+          themeToggle.classList.add('sun-icon');
+        } else {
+          currentTheme = 'dark';
+          html.classList.remove('light-mode');
+          themeToggle.textContent = '🌙';
+          themeToggle.classList.remove('sun-icon');
+        }
+        
+        localStorage.setItem('theme', currentTheme);
+        
+        // Retirer l'animation après qu'elle soit terminée
+        setTimeout(() => {
+          themeToggle.classList.remove('sun-icon');
+        }, 600);
+      }
+
+      // Fonction utilitaire pour remplacer les placeholders
+      function formatMessage(template, params = {}) {
+        return template.replace(/\{(\w+)\}/g, (match, key) => params[key] || match);
+      }
+
+      // Fonction pour obtenir une traduction
+      function t(key, params = {}) {
+        const keys = key.split('.');
+        let value = TRANSLATIONS[currentLang];
+        for (const k of keys) {
+          value = value?.[k];
+        }
+        return params ? formatMessage(value || key, params) : (value || key);
+      }
+
+      // Constantes globales
+      const FILTER_MAPPINGS = {
+        gender: {
+          genderMale: 'Male',
+          genderFemale: 'Female'
+        },
+        element: {
+          elementWind: 'Wind',
+          elementForest: 'Forest',
+          elementFire: 'Fire',
+          elementMountain: 'Mountain'
+        }
+      };
+
+      const CHECKBOX_IDS = {
+        genderMale: 'genderMale',
+        genderFemale: 'genderFemale',
+        elementWind: 'elementWind',
+        elementForest: 'elementForest',
+        elementFire: 'elementFire',
+        elementMountain: 'elementMountain'
+      };
+
+      const CONFIG = {
+        MESSAGE_DURATION: 3000,
+        MESSAGE_DURATION_WARNING: 4000,
+        MAX_RETRIES: 3,
+        RETRY_BASE_DELAY: 500,
+        TEAM_SIZE: 11,
+        ANIMATION_DELAY_INCREMENT: 0.05
+      };
+
+      // URL du CSV publié
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEzwTRIzJTn6kj3oPHGKCqjSIL-cJwRIuKZRznrASNywERoXTCIPFa5KQxwT-8S2hhjvFcxGC26pXv/pub?gid=0&single=true&output=csv';
+
+      // Éléments UI
+      const languageButton = document.querySelector('.language-button');
+      const languageOptions = document.querySelectorAll('.language-option');
+      const drawBtn = document.getElementById('drawBtn');
+      const canvas = document.getElementById('canvas');
+      const playerList = document.getElementById('playerList');
+      const romajiToggle = document.getElementById('romajiToggle');
+      const genderMaleCheckbox = document.getElementById('genderMale');
+      const genderFemaleCheckbox = document.getElementById('genderFemale');
+      const elementWindCheckbox = document.getElementById('elementWind');
+      const elementForestCheckbox = document.getElementById('elementForest');
+      const elementFireCheckbox = document.getElementById('elementFire');
+      const elementMountainCheckbox = document.getElementById('elementMountain');
+      drawBtn.disabled = true;
+      drawBtn.innerHTML = `<span class="loading-spinner"></span><span>${t('loading')}</span>`;
+
+      // Chargement des données
+      let players = [];
+      let currentTeam = [];
+
+      // Fonction pour mettre à jour tous les textes de l'interface
+      function updateUILanguage() {
+        // Titre et info
+        document.getElementById('mainTitle').textContent = t('title');
+        document.getElementById('infoTitle').textContent = t('infoTitle');
+        document.getElementById('infoText').textContent = t('infoText');
+        
+        // Bouton de tirage (si pas en chargement)
+        if (!drawBtn.disabled && (drawBtn.textContent.includes('joueur') || drawBtn.textContent.includes('player'))) {
+          drawBtn.textContent = t('drawButton');
+        }
+        
+        // Labels de filtres
+        document.getElementById('optionsTitle').innerHTML = t('optionsTitle');
+        document.getElementById('romajiLabel').textContent = t('romajiLabel');
+        document.getElementById('genderFilterTitle').textContent = t('genderFilterTitle');
+        document.getElementById('genderMaleLabel').textContent = t('genderMale');
+        document.getElementById('genderFemaleLabel').textContent = t('genderFemale');
+        document.getElementById('elementFilterTitle').textContent = t('elementFilterTitle');
+        document.getElementById('elementWindLabel').textContent = t('elements.Wind');
+        document.getElementById('elementForestLabel').textContent = t('elements.Forest');
+        document.getElementById('elementFireLabel').textContent = t('elements.Fire');
+        document.getElementById('elementMountainLabel').textContent = t('elements.Mountain');
+        document.getElementById('teamTitle').innerHTML = t('teamTitle');
+        
+        // ARIA labels
+        languageButton.setAttribute('aria-label', t('aria.languageSelector'));
+        document.querySelector('[role="group"][aria-label]').setAttribute('aria-label', t('aria.genderFilter'));
+        document.querySelectorAll('[role="group"]')[1]?.setAttribute('aria-label', t('aria.elementFilter'));
+        
+        // Checkboxes ARIA
+        genderMaleCheckbox.setAttribute('aria-label', t('aria.includeMale'));
+        genderFemaleCheckbox.setAttribute('aria-label', t('aria.includeFemale'));
+        elementWindCheckbox.setAttribute('aria-label', t('aria.includeElement', { element: t('elements.Wind') }));
+        elementForestCheckbox.setAttribute('aria-label', t('aria.includeElement', { element: t('elements.Forest') }));
+        elementFireCheckbox.setAttribute('aria-label', t('aria.includeElement', { element: t('elements.Fire') }));
+        elementMountainCheckbox.setAttribute('aria-label', t('aria.includeElement', { element: t('elements.Mountain') }));
+        
+        // Mettre à jour l'équipe affichée si elle existe
+        if (currentTeam.length > 0) {
+          const plural = currentTeam.length > 1 ? (currentLang === 'fr' ? 's' : 's') : '';
+          canvas.setAttribute('aria-label', t('aria.fieldArea', { count: currentTeam.length, plural }));
+        }
+      }
+
+      // Initialiser la langue
+      languageOptions.forEach(option => {
+        if (option.dataset.lang === currentLang) {
+          option.classList.add('active');
+        }
+      });
+      updateUILanguage();
+
+      // Initialiser le thème
+      initTheme();
+
+      // Événement du bouton de thème
+      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+      document.getElementById('themeToggle').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleTheme();
+        }
+      });
+
+      // Événement de changement de langue
+      languageOptions.forEach(option => {
+        const handleSelect = () => {
+          const newLang = option.dataset.lang;
+          if (newLang !== currentLang) {
+            currentLang = newLang;
+            
+            // Mettre à jour la classe active
+            languageOptions.forEach(opt => opt.classList.remove('active'));
+            option.classList.add('active');
+            
+            try {
+              localStorage.setItem('language', currentLang);
+            } catch (e) {
+              if (window.location.hostname === 'localhost') {
+                console.warn('Cannot save language preference:', e);
+              }
+            }
+            updateUILanguage();
+            // Mettre à jour le tooltip du bouton si nécessaire
+            if (drawBtn.disabled && drawBtn.title) {
+              drawBtn.title = t('tooltips.selectFiltersRequired');
+            }
+          }
+        };
+
+        // Support clic
+        option.addEventListener('click', handleSelect);
+        
+        // Support clavier (Enter et Space)
+        option.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleSelect();
+          }
+        });
+      });
+
+      // Charger les préférences depuis localStorage
+      const useRomaji = localStorage.getItem('useRomaji') === 'true';
+      romajiToggle.checked = useRomaji;
+
+      // Charger tous les filtres depuis localStorage (approche DRY)
+      const checkboxElements = {
+        genderMale: genderMaleCheckbox,
+        genderFemale: genderFemaleCheckbox,
+        elementWind: elementWindCheckbox,
+        elementForest: elementForestCheckbox,
+        elementFire: elementFireCheckbox,
+        elementMountain: elementMountainCheckbox
+      };
+
+      Object.entries(checkboxElements).forEach(([key, checkbox]) => {
+        const saved = localStorage.getItem(key);
+        if (saved !== null) checkbox.checked = saved === 'true';
+      });
+
+      // Sauvegarder les filtres à chaque changement (approche DRY)
+      function saveFilters() {
+        try {
+          Object.entries(checkboxElements).forEach(([key, checkbox]) => {
+            localStorage.setItem(key, checkbox.checked);
+          });
+        } catch (e) {
+          if (window.location.hostname === 'localhost') {
+            console.warn(t('messages.cannotSaveFilters'), e);
+          }
+        }
+      }
+
+      // Valider que au moins un filtre de chaque catégorie est coché
+      function validateFilters() {
+        const hasGender = Object.keys(FILTER_MAPPINGS.gender).some(id => 
+          document.getElementById(id).checked
+        );
+        const hasElement = Object.keys(FILTER_MAPPINGS.element).some(id => 
+          document.getElementById(id).checked
+        );
+        return hasGender && hasElement;
+      }
+
+      // Mettre à jour l'état du bouton de tirage selon les filtres
+      function updateDrawButtonState() {
+        const isValid = validateFilters();
+        
+        if (players.length > 0) {
+          drawBtn.disabled = !isValid;
+          
+          if (!isValid) {
+            drawBtn.title = t('tooltips.selectFiltersRequired');
+            drawBtn.style.opacity = '0.5';
+          } else {
+            drawBtn.title = '';
+            drawBtn.style.opacity = '1';
+          }
+        }
+      }
+
+      // Attacher les événements de sauvegarde et validation
+      Object.values(checkboxElements).forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+          saveFilters();
+          updateDrawButtonState();
+        });
+      });
+
+      // Positions des joueurs sur le terrain
+      let positions = [];
+
+      // Chargement des positions depuis le fichier JSON
+      async function loadPositions() {
+        try {
+          const resp = await fetch('positions.json');
+          if (!resp.ok) throw new Error('Impossible de charger positions.json');
+          const positionsData = await resp.json();
+          positions = positionsData.map(p => ({
+            top: p.top + '%',
+            left: p.left + '%',
+            width: p.width + 'px',
+            height: p.height + 'px',
+            transform: 'translate(-50%, -50%)'
+          }));
+        } catch (err) {
+          // Logging en mode dev uniquement
+          if (window.location.hostname === 'localhost') {
+            console.error(t('messages.positionsError'), err);
+          }
+          // Fallback: grille 4x3 répartie si le JSON échoue
+          positions = Array(11).fill(null).map((_, i) => {
+            const row = Math.floor(i / 4);
+            const col = i % 4;
+            return {
+              top: (20 + row * 25) + '%',
+              left: (20 + col * 20) + '%',
+              width: '400px',
+              height: '235px',
+              transform: 'translate(-50%, -50%)'
+            };
+          });
+        }
+      }
+
+      // Fonction pour afficher un message temporaire (remplace alert)
+      function showMessage(text, type = 'info', duration = CONFIG.MESSAGE_DURATION) {
+        const existing = document.querySelector('.message-box');
+        if (existing) existing.remove();
+
+        const messageBox = document.createElement('div');
+        messageBox.className = `message-box ${type}`;
+        messageBox.textContent = text;
+        document.body.appendChild(messageBox);
+
+        setTimeout(() => {
+          messageBox.style.opacity = '0';
+          messageBox.style.transform = 'translate(-50%, -20px)';
+          setTimeout(() => messageBox.remove(), 300);
+        }, duration);
+      }
+
+      // Fonction de validation d'URL pour les images
+      function isValidImageUrl(url) {
+        if (!url) return false;
+        try {
+          const parsed = new URL(url);
+          return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+        } catch {
+          return false;
+        }
+      }
+
+      // Fonction de sanitization pour éviter les XSS
+      function sanitizeHTML(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      // Parsing CSV
+      function parseCsv(csvText) {
+        const lines = csvText.trim().split(/\r?\n/);
+        if (lines.length === 0) return [];
+        const splitter = /,(?=(?:[^"]*"[^"]*")*[^"]*$)/;
+        const headers = lines.shift();
+        
+        // Validation basique de la structure
+        if (!headers || headers.split(splitter).length < 3) {
+          throw new Error('Format CSV invalide : colonnes manquantes');
+        }
+        
+        const data = [];
+        let excludedCount = 0;
+        for (const rawLine of lines) {
+          if (!rawLine.trim()) continue;
+          const cols = rawLine.split(splitter).map(c => c.replace(/^"|"$/g, '').trim());
+          
+          // Sanitization des données
+          const name = sanitizeHTML(cols[0] || '');
+          const img = sanitizeHTML(cols[1] || '');
+          const romaji = sanitizeHTML(cols[2] || name);
+          const element = sanitizeHTML(cols[3] || '');
+          const gender = sanitizeHTML(cols[4] || '');
+          
+          if (name && !name.includes('???') && !img.endsWith('icn_secret_character.png')) {
+            data.push({ name, img, romaji, element, gender });
+          } else if (name && (name.includes('???') || img.endsWith('icn_secret_character.png'))) {
+            excludedCount++;
+          }
+        }
+        // Logging en mode dev uniquement
+        if (excludedCount > 0 && window.location.hostname === 'localhost') {
+          console.log(`⚠️ ${t('messages.playersExcluded', { count: excludedCount })}`);
+        }
+        return data;
+      }
+
+      // Fonction de chargement avec retry
+      async function loadPlayers(retries = CONFIG.MAX_RETRIES) {
+        // Charger les positions d'abord
+        await loadPositions();
+        
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            drawBtn.innerHTML = `<span class="loading-spinner"></span><span>${t('loadingAttempt', { attempt, total: retries })}</span>`;
+            const resp = await fetch(csvUrl);
+            
+            if (!resp.ok) {
+              throw new Error(t('messages.httpError', { status: resp.status, message: resp.statusText }));
+            }
+            
+            const text = await resp.text();
+            players = parseCsv(text);
+            
+            if (players.length === 0) {
+              throw new Error(t('messages.noCsvPlayers'));
+            }
+            
+            // Logging en mode dev uniquement
+            if (window.location.hostname === 'localhost') {
+              console.log(`✅ ${t('messages.playersLoaded', { count: players.length })}`);
+            }
+            drawBtn.disabled = false;
+            drawBtn.textContent = t('drawButton');
+            updateDrawButtonState(); // Vérifier l'état des filtres après chargement
+            return;
+            
+          } catch (err) {
+            // Logging en mode dev uniquement
+            if (window.location.hostname === 'localhost') {
+              console.error(`Tentative ${attempt}/${retries} échouée:`, err);
+            }
+            
+            if (attempt === retries) {
+              drawBtn.disabled = true;
+              drawBtn.textContent = t('messages.errorPrefix', { message: err.message });
+              drawBtn.title = t('messages.reloadToRetry');
+            } else {
+              // Attendre avant de réessayer (backoff exponentiel)
+              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * CONFIG.RETRY_BASE_DELAY));
+            }
+          }
+        }
+      }
+
+      loadPlayers();
+
+      // Tirage aléatoire avec filtrage DRY
+      function drawTeam() {
+        if (players.length === 0) {
+          showMessage(t('messages.noPlayers'), 'error');
+          return [];
+        }
+
+        // Validation : au moins un filtre de chaque catégorie doit être coché
+        if (!validateFilters()) {
+          showMessage(t('messages.selectFilters'), 'warning', CONFIG.MESSAGE_DURATION_WARNING);
+          return [];
+        }
+        
+        // Récupérer les filtres actifs en utilisant les constantes globales
+        const allowedGenders = Object.entries(FILTER_MAPPINGS.gender)
+          .filter(([id]) => document.getElementById(id).checked)
+          .map(([, value]) => value);
+        
+        const allowedElements = Object.entries(FILTER_MAPPINGS.element)
+          .filter(([id]) => document.getElementById(id).checked)
+          .map(([, value]) => value);
+        
+        // Filtrer les joueurs selon les critères
+        let filteredPlayers = players;
+        
+        if (allowedGenders.length > 0) {
+          filteredPlayers = filteredPlayers.filter(p => !p.gender || allowedGenders.includes(p.gender));
+        }
+        
+        if (allowedElements.length > 0) {
+          filteredPlayers = filteredPlayers.filter(p => !p.element || allowedElements.includes(p.element));
+        }
+        
+        if (filteredPlayers.length === 0) {
+          // Message d'erreur spécifique avec détails des filtres
+          const genderNames = allowedGenders.map(g => t(`gender${g}`)).join(', ');
+          const elementNames = allowedElements.map(e => t(`elements.${e}`)).join(', ');
+          showMessage(t('messages.noPlayersWithFilters', { genders: genderNames, elements: elementNames }), 'warning');
+          return [];
+        }
+        
+        // Fisher-Yates shuffle optimisé (sélection partielle)
+        const count = Math.min(CONFIG.TEAM_SIZE, filteredPlayers.length);
+        const result = [];
+        const pool = [...filteredPlayers];
+        
+        for (let i = 0; i < count; i++) {
+          const randomIndex = Math.floor(Math.random() * (pool.length - i));
+          result.push(pool[randomIndex]);
+          // Échanger avec le dernier élément non-sélectionné
+          [pool[randomIndex], pool[pool.length - 1 - i]] = [pool[pool.length - 1 - i], pool[randomIndex]];
+        }
+        
+        return result;
+      }
+
+      // Affichage du résultat
+      function renderTeam(team, animate = true) {
+        canvas.innerHTML = '';
+        playerList.innerHTML = '';
+        const useRomaji = romajiToggle.checked;
+        
+        // Mise à jour de l'accessibilité avec le nombre de joueurs
+        const plural = team.length > 1 ? (currentLang === 'fr' ? 's' : 's') : '';
+        canvas.setAttribute('aria-label', t('aria.fieldArea', { count: team.length, plural }));
+        
+        team.forEach((p, index) => {
+          // Carte sur le terrain
+          const card = document.createElement('div');
+          card.className = 'player-card';
+          card.setAttribute('data-player-index', index);
+          if (animate) {
+            card.style.animationDelay = `${index * CONFIG.ANIMATION_DELAY_INCREMENT}s`;
+          } else {
+            card.style.opacity = '1';
+            card.style.animation = 'none';
+          }
+          
+          const pos = positions[index] || positions[0];
+          card.style.top = pos.top;
+          card.style.left = pos.left;
+          card.style.width = pos.width;
+          card.style.height = pos.height;
+
+          const img = document.createElement('img');
+          const imgUrl = isValidImageUrl(p.img) ? p.img : '';
+          img.src = imgUrl;
+          img.alt = p.name;
+          img.className = 'player-image';
+
+          const placeholder = document.createElement('div');
+          placeholder.className = 'player-image';
+          placeholder.style.display = 'none';
+          placeholder.style.background = 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)';
+          const initials = (p.name || '').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+          placeholder.textContent = initials || '?';
+
+          img.onerror = () => {
+            img.style.display = 'none';
+            placeholder.style.display = 'flex';
+          };
+
+          const bg = document.createElement('div');
+          bg.className = 'player-bg';
+          card.appendChild(bg);
+
+          const imgContainer = document.createElement('div');
+          imgContainer.className = 'player-image-container';
+          imgContainer.appendChild(img);
+          imgContainer.appendChild(placeholder);
+          card.appendChild(imgContainer);
+
+          const displayName = useRomaji ? (p.romaji || p.name) : p.name;
+          const nameSpan = document.createElement('div');
+          nameSpan.className = 'player-name';
+          nameSpan.textContent = displayName;
+          nameSpan.setAttribute('data-player-index', index);
+          card.appendChild(nameSpan);
+          
+          // Icône d'élément avec fallback
+          if (p.element) {
+            const elementImg = document.createElement('img');
+            elementImg.className = 'player-element';
+            elementImg.src = `${p.element}.webp`;
+            elementImg.alt = p.element;
+            elementImg.onerror = () => {
+              // Fallback: cacher l'image si elle ne charge pas
+              elementImg.style.display = 'none';
+              if (window.location.hostname === 'localhost') {
+                console.warn(t('messages.missingElementImage', { element: p.element }));
+              }
+            };
+            card.appendChild(elementImg);
+          }
+          
+          canvas.appendChild(card);
+
+          // Joueur dans la liste
+          const listItem = document.createElement('div');
+          listItem.className = 'player-item';
+          listItem.setAttribute('data-player-index', index);
+          listItem.textContent = `${index + 1}. ${displayName}`;
+          playerList.appendChild(listItem);
+        });
+      }
+
+      // Mettre à jour juste les noms sans recréer le DOM
+      function updateTeamNames(team) {
+        const useRomaji = romajiToggle.checked;
+        
+        team.forEach((p, index) => {
+          // Mettre à jour le nom sur la carte
+          const nameSpan = canvas.querySelector(`.player-name[data-player-index="${index}"]`);
+          if (nameSpan) {
+            const displayName = useRomaji ? (p.romaji || p.name) : p.name;
+            nameSpan.textContent = displayName;
+          }
+          
+          // Mettre à jour le nom dans la liste
+          const listItem = playerList.querySelector(`.player-item[data-player-index="${index}"]`);
+          if (listItem) {
+            const displayName = useRomaji ? (p.romaji || p.name) : p.name;
+            listItem.textContent = `${index + 1}. ${displayName}`;
+          }
+        });
+      }
+
+      // Clic sur le bouton
+      drawBtn.addEventListener('click', () => {
+        currentTeam = drawTeam();
+        if (currentTeam.length) renderTeam(currentTeam);
+      });
+
+      // Basculer entre FR et Romaji (sans tirer une nouvelle équipe)
+      romajiToggle.addEventListener('change', () => {
+        try {
+          localStorage.setItem('useRomaji', romajiToggle.checked);
+        } catch (e) {
+          if (window.location.hostname === 'localhost') {
+            console.warn(t('messages.cannotSaveRomaji'), e);
+          }
+        }
+        // Mettre à jour juste les textes sans recréer le DOM
+        if (currentTeam.length) updateTeamNames(currentTeam);
+      });
+
+    })();
+  </script>
+</body>
+</html>

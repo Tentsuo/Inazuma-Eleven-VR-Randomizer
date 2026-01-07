@@ -1,0 +1,13 @@
+[
+  { "num": 1, "name": "Gardien", "top": 90.69766826350475, "left": 49.52597729137443, "width": 400, "height": 235 },
+  { "num": 2, "name": "Défenseur 1", "top": 72.23036815499034, "left": 34.34613450493608, "width": 400, "height": 235 },
+  { "num": 3, "name": "Défenseur 2", "top": 72.50377153746393, "left": 64.89135325410899, "width": 400, "height": 235 },
+  { "num": 4, "name": "Défenseur 3", "top": 54.77198740174153, "left": 15.495063917634916, "width": 400, "height": 235 },
+  { "num": 5, "name": "Défenseur 4", "top": 54.704232062038486, "left": 83.55927268877538, "width": 400, "height": 235 },
+  { "num": 6, "name": "Milieu 1", "top": 53.09319005902125, "left": 49.79885133525659, "width": 400, "height": 235 },
+  { "num": 7, "name": "Milieu 2", "top": 35.0149538152079, "left": 28.123494693380618, "width": 400, "height": 235 },
+  { "num": 8, "name": "Milieu 3", "top": 35.19836963713839, "left": 70.8501177778366, "width": 400, "height": 235 },
+  { "num": 9, "name": "Attaquant 1", "top": 11.95537675674245, "left": 20.28769552444221, "width": 400, "height": 235 },
+  { "num": 10, "name": "Attaquant 2", "top": 16.46110684699468, "left": 49.62708096233756, "width": 400, "height": 235 },
+  { "num": 11, "name": "Attaquant 3", "top": 12.187756398380225, "left": 78.60016409496335, "width": 400, "height": 235 }
+]
