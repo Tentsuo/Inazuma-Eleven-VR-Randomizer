@@ -501,16 +501,18 @@
       }
 
       .player-name {
-        font-size: 0.7rem;
-        bottom: 0.2rem;
-        left: 0.2rem;
+        font-size: 0.65rem;
+        bottom: 0.15rem;
+        left: 0.15rem;
+        max-width: 65%;
+        line-height: 1;
       }
 
       .player-element {
-        width: 1.2rem;
-        height: 1.2rem;
-        top: 0.2rem;
-        left: 0.2rem;
+        width: 1rem;
+        height: 1rem;
+        top: 0.15rem;
+        left: 0.15rem;
       }
 
       .element-checkbox label {
@@ -1366,13 +1368,13 @@
           let cardWidth, cardHeight;
           
           if (screenWidth <= 480) {
-            // Petit mobile
-            cardWidth = '140px';
-            cardHeight = '82px';
+            // Petit mobile - tailles réduites pour éviter les chevauchements
+            cardWidth = '105px';
+            cardHeight = '62px';
           } else if (screenWidth <= 768) {
             // Tablette/Mobile
-            cardWidth = '200px';
-            cardHeight = '117px';
+            cardWidth = '160px';
+            cardHeight = '94px';
           } else {
             // Desktop
             cardWidth = pos.width;
