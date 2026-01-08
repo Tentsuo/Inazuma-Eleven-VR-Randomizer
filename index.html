@@ -684,6 +684,10 @@
             <input type="checkbox" id="romajiToggle">
             <label for="romajiToggle" id="romajiLabel">Noms Romaji</label>
           </div>
+          <div class="checkbox-container">
+            <input type="checkbox" id="realisticGkToggle">
+            <label for="realisticGkToggle" id="realisticGkLabel">Gardien réaliste (GK uniquement)</label>
+          </div>
           
           <h3 class="filter-heading" id="genderFilterTitle">Sexe :</h3>
           <div class="element-filters" role="group" aria-label="Filtrage par sexe">
@@ -751,7 +755,8 @@
           loadingAttempt: 'Chargement... ({attempt}/{total})',
           optionsTitle: '⚙️ Options',
           romajiLabel: 'Noms Romaji',
-          genderFilterTitle: 'Sexe :',
+          realisticGkLabel: 'Vrai GK',
+          genderFilterTitle: 'Genre :',
           genderMale: 'Masculin',
           genderFemale: 'Féminin',
           elementFilterTitle: 'Éléments :',
@@ -775,7 +780,9 @@
             cannotSaveFilters: 'Impossible de sauvegarder les filtres:',
             cannotSaveRomaji: 'Impossible de sauvegarder la préférence romaji:',
             positionsError: 'Erreur chargement positions:',
-            missingElementImage: "Image d'élément manquante: {element}.webp"
+            missingElementImage: "Image d'élément manquante: {element}.webp",
+            noGoalkeepers: 'Aucun gardien (GK) disponible avec les filtres sélectionnés.',
+            notEnoughPlayers: 'Pas assez de joueurs non-gardiens disponibles.'
           },
           aria: {
             languageSelector: 'Sélecteur de langue',
@@ -799,6 +806,7 @@
           loadingAttempt: 'Loading... ({attempt}/{total})',
           optionsTitle: '⚙️ Options',
           romajiLabel: 'Romaji Names',
+          realisticGkLabel: 'True GK',
           genderFilterTitle: 'Gender:',
           genderMale: 'Male',
           genderFemale: 'Female',
@@ -823,7 +831,9 @@
             cannotSaveFilters: 'Cannot save filters:',
             cannotSaveRomaji: 'Cannot save romaji preference:',
             positionsError: 'Error loading positions:',
-            missingElementImage: 'Missing element image: {element}.webp'
+            missingElementImage: 'Missing element image: {element}.webp',
+            noGoalkeepers: 'No goalkeepers (GK) available with selected filters.',
+            notEnoughPlayers: 'Not enough non-goalkeeper players available.'
           },
           aria: {
             languageSelector: 'Language selector',
@@ -938,6 +948,7 @@
       const canvas = document.getElementById('canvas');
       const playerList = document.getElementById('playerList');
       const romajiToggle = document.getElementById('romajiToggle');
+      const realisticGkToggle = document.getElementById('realisticGkToggle');
       const genderMaleCheckbox = document.getElementById('genderMale');
       const genderFemaleCheckbox = document.getElementById('genderFemale');
       const elementWindCheckbox = document.getElementById('elementWind');
@@ -966,6 +977,7 @@
         // Labels de filtres
         document.getElementById('optionsTitle').innerHTML = t('optionsTitle');
         document.getElementById('romajiLabel').textContent = t('romajiLabel');
+        document.getElementById('realisticGkLabel').textContent = t('realisticGkLabel');
         document.getElementById('genderFilterTitle').textContent = t('genderFilterTitle');
         document.getElementById('genderMaleLabel').textContent = t('genderMale');
         document.getElementById('genderFemaleLabel').textContent = t('genderFemale');
@@ -1057,6 +1069,8 @@
       // Charger les préférences depuis localStorage
       const useRomaji = localStorage.getItem('useRomaji') === 'true';
       romajiToggle.checked = useRomaji;
+      const useRealisticGk = localStorage.getItem('useRealisticGk') === 'true';
+      realisticGkToggle.checked = useRealisticGk;
 
       // Charger tous les filtres depuis localStorage (approche DRY)
       const checkboxElements = {
@@ -1217,9 +1231,10 @@
           const romaji = sanitizeHTML(cols[2] || name);
           const element = sanitizeHTML(cols[3] || '');
           const gender = sanitizeHTML(cols[4] || '');
+          const position = sanitizeHTML(cols[5] || ''); // Nouvelle colonne Position
           
           if (name && !name.includes('???') && !img.endsWith('icn_secret_character.png')) {
-            data.push({ name, img, romaji, element, gender });
+            data.push({ name, img, romaji, element, gender, position });
           } else if (name && (name.includes('???') || img.endsWith('icn_secret_character.png'))) {
             excludedCount++;
           }
@@ -1322,16 +1337,49 @@
           return [];
         }
         
-        // Fisher-Yates shuffle optimisé (sélection partielle)
-        const count = Math.min(CONFIG.TEAM_SIZE, filteredPlayers.length);
+        // Vérifier si l'option "Gardien réaliste" est activée
+        const useRealisticGk = realisticGkToggle.checked;
         const result = [];
-        const pool = [...filteredPlayers];
         
-        for (let i = 0; i < count; i++) {
-          const randomIndex = Math.floor(Math.random() * (pool.length - i));
-          result.push(pool[randomIndex]);
-          // Échanger avec le dernier élément non-sélectionné
-          [pool[randomIndex], pool[pool.length - 1 - i]] = [pool[pool.length - 1 - i], pool[randomIndex]];
+        if (useRealisticGk) {
+          // Tirer un gardien (GK) pour la position 1
+          const goalkeepers = filteredPlayers.filter(p => p.position === 'GK');
+          
+          if (goalkeepers.length === 0) {
+            showMessage(t('messages.noGoalkeepers'), 'warning');
+            return [];
+          }
+          
+          // Sélectionner un gardien aléatoire
+          const gkIndex = Math.floor(Math.random() * goalkeepers.length);
+          result.push(goalkeepers[gkIndex]);
+          
+          // Filtrer les non-gardiens pour les autres positions
+          const nonGoalkeepers = filteredPlayers.filter(p => p.position !== 'GK');
+          
+          if (nonGoalkeepers.length < 10) {
+            showMessage(t('messages.notEnoughPlayers'), 'warning');
+            return [];
+          }
+          
+          // Fisher-Yates pour les 10 autres joueurs
+          const pool = [...nonGoalkeepers];
+          for (let i = 0; i < 10; i++) {
+            const randomIndex = Math.floor(Math.random() * (pool.length - i));
+            result.push(pool[randomIndex]);
+            [pool[randomIndex], pool[pool.length - 1 - i]] = [pool[pool.length - 1 - i], pool[randomIndex]];
+          }
+        } else {
+          // Mode normal : Fisher-Yates shuffle optimisé (sélection partielle)
+          const count = Math.min(CONFIG.TEAM_SIZE, filteredPlayers.length);
+          const pool = [...filteredPlayers];
+          
+          for (let i = 0; i < count; i++) {
+            const randomIndex = Math.floor(Math.random() * (pool.length - i));
+            result.push(pool[randomIndex]);
+            // Échanger avec le dernier élément non-sélectionné
+            [pool[randomIndex], pool[pool.length - 1 - i]] = [pool[pool.length - 1 - i], pool[randomIndex]];
+          }
         }
         
         return result;
@@ -1491,6 +1539,17 @@
         }
         // Mettre à jour juste les textes sans recréer le DOM
         if (currentTeam.length) updateTeamNames(currentTeam);
+      });
+
+      // Sauvegarder la préférence gardien réaliste
+      realisticGkToggle.addEventListener('change', () => {
+        try {
+          localStorage.setItem('useRealisticGk', realisticGkToggle.checked);
+        } catch (e) {
+          if (window.location.hostname === 'localhost') {
+            console.warn('Impossible de sauvegarder la préférence gardien réaliste:', e);
+          }
+        }
       });
 
     })();
