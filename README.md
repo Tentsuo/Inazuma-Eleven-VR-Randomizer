@@ -12,6 +12,8 @@ Un grand merci pour les personnes qui ont fait [ce gdoc](https://docs.google.com
 
 - Filtre noms jap ou "localized"
 
+- Choisir le fait d'avoir un vrai gardien pour chaque tirage
+
 - Choisir le genre des persos tirés (Masculin ou Féminin) 
 
 - Choisir les élément des persos tirés (Vent, Forêt, Feu, Montagne)
